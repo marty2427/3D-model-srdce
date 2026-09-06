@@ -2,9 +2,9 @@ import { createContext } from 'react'
 import * as THREE from 'three'
 
 export const colors = {
-  myocardium: '#b3423c',
+  myocardium: '#a93a3b',
   myocardiumLight: '#c9605a',
-  atrium: '#c96a63',
+  atrium: '#bd5d5a',
   cavityOxy: '#7a1a1a',
   cavityDeoxy: '#3a2f6e',
   artery: '#d9403a',

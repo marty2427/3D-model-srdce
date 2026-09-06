@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useRef } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
-import { OrbitControls } from '@react-three/drei'
+import { Environment, Lightformer, OrbitControls } from '@react-three/drei'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { useStore } from '../store'
 import { HeartModel } from './HeartModel'
@@ -46,11 +46,32 @@ function Controls() {
 function Lights() {
   return (
     <>
-      <ambientLight intensity={0.55} />
-      <hemisphereLight args={['#dfe7ff', '#3a2a2a', 0.55]} />
-      <directionalLight position={[5, 8, 7]} intensity={1.9} color="#fff4ea" />
-      <directionalLight position={[-6, 3, -4]} intensity={0.6} color="#9fb4ff" />
-      <directionalLight position={[0, -6, 5]} intensity={0.35} color="#ffd8c8" />
+      <ambientLight intensity={0.25} />
+      <hemisphereLight args={['#dfe7ff', '#3a2020', 0.4]} />
+      <directionalLight
+        position={[4, 7, 6]}
+        intensity={2.2}
+        color="#fff1e4"
+        castShadow
+        shadow-mapSize={[2048, 2048]}
+        shadow-bias={-0.0004}
+        shadow-normalBias={0.02}
+        shadow-camera-near={1}
+        shadow-camera-far={25}
+        shadow-camera-left={-4}
+        shadow-camera-right={4}
+        shadow-camera-top={4.5}
+        shadow-camera-bottom={-4}
+      />
+      <directionalLight position={[-6, 3, -4]} intensity={0.5} color="#9fb4ff" />
+      <directionalLight position={[0, -6, 5]} intensity={0.3} color="#ffd8c8" />
+      {/* prostředí pro odlesky – bez externích souborů, jen světelné plochy */}
+      <Environment resolution={256} frames={1}>
+        <Lightformer intensity={3} form="rect" position={[0, 6, -8]} scale={[12, 6, 1]} color="#fff4ea" />
+        <Lightformer intensity={1.5} form="rect" position={[-8, 3, 4]} rotation-y={Math.PI / 3} scale={[6, 8, 1]} color="#dbe6ff" />
+        <Lightformer intensity={1.2} form="ring" position={[7, -1, 5]} scale={5} color="#ffd9c9" />
+        <Lightformer intensity={0.6} form="rect" position={[0, -8, 0]} rotation-x={Math.PI / 2} scale={[12, 12, 1]} color="#5a3a3a" />
+      </Environment>
     </>
   )
 }
@@ -61,6 +82,7 @@ export function Scene() {
     <Canvas
       camera={{ position: [0.4, 0.9, 7.2], fov: 38, near: 0.1, far: 100 }}
       dpr={[1, 2]}
+      shadows
       gl={{ antialias: true, localClippingEnabled: true, powerPreference: 'high-performance' }}
       onPointerMissed={() => select(null)}
       style={{ background: 'radial-gradient(ellipse at 50% 40%, #182238 0%, #0b0f17 70%)' }}

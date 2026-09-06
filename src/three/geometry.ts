@@ -271,6 +271,30 @@ export const coronary = {
   ]),
 }
 
+/** Srdeční žíly (velká srdeční žíla vedle RIA → koronární sinus v zadním síňokomorovém žlábku). */
+export const cardiacVeins: V3[][] = [
+  surf([
+    [0.72, -1.75, 0.3],
+    [0.42, -1.3, 0.62],
+    [0.25, -0.9, 0.8],
+    [0.2, -0.5, 0.86],
+    [0.32, -0.1, 0.72],
+    [0.55, 0.25, 0.5],
+    [0.95, 0.3, 0.2],
+    [1.2, 0.2, -0.3],
+    [1.0, 0.1, -0.78],
+    [0.5, 0.0, -1.0],
+    [-0.1, -0.05, -0.95],
+    [-0.6, -0.1, -0.7],
+  ], all),
+  surf([
+    [-0.45, -1.3, 0.55],
+    [-0.75, -0.9, 0.6],
+    [-1.05, -0.4, 0.55],
+    [-1.2, 0.05, 0.42],
+  ]),
+]
+
 /** Poloha léze v RIA (proximální třetina) a křivka RIA. */
 export const LAD_LESION_T = 0.3
 export const ladCurve = curveFrom(coronary.lad)

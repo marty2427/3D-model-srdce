@@ -3,7 +3,7 @@ import { cutPlane, PickContext } from './constants'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useStore } from '../store'
-
+import { getMuscleBump } from './textures'
 
 interface HeartMaterialProps {
   color: string
@@ -20,11 +20,17 @@ interface HeartMaterialProps {
   metalness?: number
   opacity?: number
   flat?: boolean
+  /** barvy vrcholů (tuk ve žlábcích apod.) */
+  vertexColors?: boolean
+  /** hrbolová mapa svaloviny */
+  bump?: number
+  /** lesk vlhkého povrchu */
+  clearcoat?: number
   /** volá se každý snímek – umožňuje animovat barvu/záři (dostane základní emisi a intenzitu) */
   animate?: (m: THREE.MeshStandardMaterial, baseEmissive: string, baseIntensity: number, delta: number) => void
 }
 
-/** Standardní materiál srdečních struktur: reaguje na řez, průhlednost a výběr. */
+/** Materiál srdečních struktur: reaguje na řez, průhlednost a výběr; fyzikální model s lesklým povrchem. */
 export function HeartMaterial({
   color,
   transparentOpacity = 0.22,
@@ -33,13 +39,16 @@ export function HeartMaterial({
   side,
   emissive,
   emissiveIntensity,
-  roughness = 0.6,
-  metalness = 0.05,
+  roughness = 0.5,
+  metalness = 0.0,
   opacity,
   flat,
+  vertexColors = false,
+  bump = 0,
+  clearcoat = 0.18,
   animate,
 }: HeartMaterialProps) {
-  const ref = useRef<THREE.MeshStandardMaterial>(null)
+  const ref = useRef<THREE.MeshPhysicalMaterial>(null)
   const cutaway = useStore((s) => s.cutaway)
   const transparent = useStore((s) => s.transparent)
   const pick = useContext(PickContext)
@@ -52,7 +61,7 @@ export function HeartMaterial({
     if (animate && ref.current) animate(ref.current, em, emI, Math.min(delta, 0.1))
   })
   return (
-    <meshStandardMaterial
+    <meshPhysicalMaterial
       ref={ref}
       color={color}
       roughness={roughness}
@@ -64,7 +73,14 @@ export function HeartMaterial({
       depthWrite={!isT}
       side={side ?? (cutaway ? THREE.DoubleSide : THREE.FrontSide)}
       clippingPlanes={cutaway && clip ? [cutPlane] : null}
+      clipShadows
       flatShading={flat ?? false}
+      vertexColors={vertexColors}
+      bumpMap={bump > 0 ? getMuscleBump() : null}
+      bumpScale={bump}
+      clearcoat={isT ? 0 : clearcoat}
+      clearcoatRoughness={0.45}
+      envMapIntensity={0.7}
     />
   )
 }
