@@ -1,15 +1,7 @@
 import type { ReactNode } from 'react'
-import { useStore, type Mode } from '../store'
+import { useStore } from '../store'
+import { modes } from '../data/modes'
 
-export const modes: { id: Mode; name: string; icon: string; hint: string }[] = [
-  { id: 'anatomie', name: 'Anatomie', icon: '🫀', hint: 'Struktury srdce a vrstvy' },
-  { id: 'funkce', name: 'Jak srdce funguje', icon: '🔄', hint: 'Srdeční cyklus a tok krve' },
-  { id: 'prevodni', name: 'Převodní systém', icon: '⚡', hint: 'Šíření vzruchu a EKG' },
-  { id: 'nemoci', name: 'Nemoci', icon: '🩺', hint: 'Patologie na modelu a EKG' },
-  { id: 'infarkt', name: 'Infarkt krok za krokem', icon: '🧭', hint: 'Od plátu k nekróze' },
-  { id: 'lecba', name: 'Léčba', icon: '🩹', hint: 'Stent, bypass, trombolýza…' },
-  { id: 'prevence', name: 'Prevence', icon: '🛡️', hint: 'Rizikové faktory a kalkulačka' },
-]
 
 /** Levé menu s režimy a ovládáním aktuálního režimu. Na mobilu je to výsuvný panel. */
 export function LeftMenu({ children }: { children?: ReactNode }) {

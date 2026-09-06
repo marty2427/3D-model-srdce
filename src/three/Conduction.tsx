@@ -1,27 +1,14 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
 import { conduction } from './geometry'
-import { colors, HeartMaterial } from './materials'
+import { HeartMaterial } from './materials'
+import { colors } from './constants'
 import { Vessel } from './Vessel'
 import { Pick } from './Pick'
 import { heartClock } from '../lib/heartClock'
-import { smoothstep } from '../lib/cycle'
+import { activation, conductionTiming } from '../lib/cycle'
 import { useParams } from './params'
 
-/** Aktivace úseku převodního systému ve fázi cyklu (0–1). */
-export function activation(p: number, t0: number, t1: number) {
-  return smoothstep(t0 - 0.008, t0 + 0.004, p) * (1 - smoothstep(t1, t1 + 0.09, p))
-}
-
-export const conductionTiming = {
-  sa: [0.0, 0.03],
-  atria: [0.0, 0.08],
-  av: [0.07, 0.125],
-  his: [0.12, 0.135],
-  bundles: [0.13, 0.15],
-  purkinje: [0.14, 0.165],
-  ventricles: [0.15, 0.21],
-} as const
 
 function useGlow(t0: number, t1: number, chaotic: 'af' | 'vt' | null) {
   return (m: THREE.MeshStandardMaterial, baseEm: string, baseI: number) => {

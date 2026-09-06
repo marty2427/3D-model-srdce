@@ -2,7 +2,7 @@ import { useCallback, useMemo, type ReactNode } from 'react'
 import type { ThreeEvent } from '@react-three/fiber'
 import { useStore } from '../store'
 import type { StructureId } from '../data/structures'
-import { PickContext } from './materials'
+import { PickContext } from './constants'
 
 interface PickProps {
   id: StructureId

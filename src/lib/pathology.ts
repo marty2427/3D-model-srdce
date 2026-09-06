@@ -79,8 +79,16 @@ export const defaultParams: HeartParams = {
   ldl: 0,
 }
 
-export function getHeartParams(s: Pick<AppState, 'mode' | 'disease' | 'infarctStep' | 'treatment' | 'treatmentStep'>): HeartParams {
+export function getHeartParams(
+  s: Pick<AppState, 'mode' | 'disease' | 'infarctStep' | 'treatment' | 'treatmentStep' | 'riskLevel'>,
+): HeartParams {
   const p: HeartParams = { ...defaultParams }
+
+  if (s.mode === 'prevence') {
+    // symbolické zobrazení: čím vyšší riziko, tím větší plát
+    p.ladPlaque = s.riskLevel < 0.2 ? 0 : 0.2 + s.riskLevel * 0.55
+    p.ladFlow = 1 - Math.max(0, s.riskLevel - 0.2) * 0.6
+  }
 
   if (s.mode === 'nemoci' && s.disease) {
     switch (s.disease) {

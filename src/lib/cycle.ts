@@ -151,3 +151,18 @@ export const conductionSteps: CyclePhase[] = [
       '[[repolarizace|Repolarizace]] komor – buňky se vracejí do klidového stavu a svalovina se uvolňuje. Na EKG vzniká [[t-vlna|vlna T]]. Síně se repolarizují už během QRS, proto to není vidět.',
   },
 ]
+
+/** Aktivace úseku převodního systému ve fázi cyklu (0–1). */
+export function activation(p: number, t0: number, t1: number) {
+  return smoothstep(t0 - 0.008, t0 + 0.004, p) * (1 - smoothstep(t1, t1 + 0.09, p))
+}
+
+export const conductionTiming = {
+  sa: [0.0, 0.03],
+  atria: [0.0, 0.08],
+  av: [0.07, 0.125],
+  his: [0.12, 0.135],
+  bundles: [0.13, 0.15],
+  purkinje: [0.14, 0.165],
+  ventricles: [0.15, 0.21],
+} as const

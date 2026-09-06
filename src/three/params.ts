@@ -12,8 +12,9 @@ export function useHeartParams(): HeartParams {
   const infarctStep = useStore((s) => s.infarctStep)
   const treatment = useStore((s) => s.treatment)
   const treatmentStep = useStore((s) => s.treatmentStep)
+  const riskLevel = useStore((s) => s.riskLevel)
   return useMemo(
-    () => getHeartParams({ mode, disease, infarctStep, treatment, treatmentStep }),
-    [mode, disease, infarctStep, treatment, treatmentStep],
+    () => getHeartParams({ mode, disease, infarctStep, treatment, treatmentStep, riskLevel }),
+    [mode, disease, infarctStep, treatment, treatmentStep, riskLevel],
   )
 }

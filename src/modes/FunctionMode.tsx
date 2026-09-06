@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useStore } from '../store'
-import { cyclePhases, phaseIndex } from '../lib/cycle'
+import { cyclePhases } from '../lib/cycle'
+import { useCyclePhaseIndex } from '../lib/useCyclePhaseIndex'
 import { heartClock, setHeartPhase } from '../lib/heartClock'
 import { Timeline } from '../components/Timeline'
 import { RichText } from '../components/RichText'
@@ -9,21 +10,6 @@ import { CirculationDiagram } from '../components/CirculationDiagram'
 
 const SPEEDS = [0.1, 0.25, 0.5, 1]
 
-/** Index aktuální fáze cyklu (aktualizuje se jen při změně). */
-export function useCyclePhaseIndex() {
-  const [idx, setIdx] = useState(() => phaseIndex(heartClock.phase))
-  useEffect(() => {
-    let raf = 0
-    const loop = () => {
-      const i = phaseIndex(heartClock.phase)
-      setIdx((prev) => (prev === i ? prev : i))
-      raf = requestAnimationFrame(loop)
-    }
-    raf = requestAnimationFrame(loop)
-    return () => cancelAnimationFrame(raf)
-  }, [])
-  return idx
-}
 
 const progressFn = () => heartClock.phase
 

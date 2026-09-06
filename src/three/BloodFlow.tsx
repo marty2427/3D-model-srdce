@@ -76,17 +76,18 @@ function FlowPath({ points, color, count = 90, ventricleAt, arteryAt, speed = 0.
 }
 
 /** Zpětný tok při nedomykavosti mitrální chlopně (LK → LS během systoly). */
+const regurgPath: V3[] = [
+  [0.5, -0.5, -0.25],
+  [0.45, 0.0, -0.35],
+  [0.45, 0.35, -0.42],
+  [0.5, 0.75, -0.55],
+  [0.45, 1.05, -0.6],
+]
+
 function Regurgitation() {
-  const pts: V3[] = [
-    [0.5, -0.5, -0.25],
-    [0.45, 0.0, -0.35],
-    [0.45, 0.35, -0.42],
-    [0.5, 0.75, -0.55],
-    [0.45, 1.05, -0.6],
-  ]
   const ref = useRef<THREE.InstancedMesh>(null)
   const count = 30
-  const curve = useMemo(() => curveFrom(pts), [])
+  const curve = useMemo(() => curveFrom(regurgPath), [])
   const ts = useMemo(() => Float32Array.from({ length: count }, () => Math.random()), [])
   const geo = useMemo(() => new THREE.SphereGeometry(0.03, 8, 6), [])
   const v = useMemo(() => new THREE.Vector3(), [])

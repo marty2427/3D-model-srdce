@@ -11,7 +11,9 @@ export function EcgStrip() {
   const params = useHeartParams()
   const canvas = useRef<HTMLCanvasElement>(null)
   const kindRef = useRef(params.ecg)
-  kindRef.current = params.ecg
+  useEffect(() => {
+    kindRef.current = params.ecg
+  }, [params.ecg])
   const bpmRef = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {

@@ -2,25 +2,15 @@ import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { RoundedBox } from '@react-three/drei'
-import { HeartMaterial, colors } from './materials'
+import { HeartMaterial } from './materials'
+import { colors } from './constants'
 import { Pick } from './Pick'
 import { Vessel } from './Vessel'
 import { useParams } from './params'
-import { coronary, curveFrom, ladCurve, LAD_LESION_T, type V3 } from './geometry'
+import { coronary, curveFrom, graftPaths, ladCurve, type V3 } from './geometry'
+import { useLesionFrame } from './lesion'
 import { heartClock } from '../lib/heartClock'
 
-/** Lokální souřadnice v místě léze RIA: bod, tečna, normála směrem ven ze srdce. */
-export function useLesionFrame() {
-  return useMemo(() => {
-    const p = ladCurve.getPointAt(LAD_LESION_T)
-    const t = ladCurve.getTangentAt(LAD_LESION_T).normalize()
-    // normála "ven" ≈ směr od středu srdce
-    const out = p.clone().sub(new THREE.Vector3(0.1, -0.5, 0)).normalize()
-    const n = out.clone().sub(t.clone().multiplyScalar(out.dot(t))).normalize()
-    const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), t)
-    return { p, t, n, q }
-  }, [])
-}
 
 /** Aterosklerotický plát a trombus v RIA (viditelné na hlavním modelu). */
 export function LadLesion() {
@@ -74,20 +64,6 @@ export function Stent() {
 }
 
 /* ---------- Bypassy ---------- */
-export const graftPaths = {
-  limaInSitu: [
-    [0.9, 2.95, 1.7],
-    [0.95, 2.0, 1.75],
-    [0.95, 1.0, 1.7],
-    [0.9, 0.0, 1.6],
-    [0.85, -0.9, 1.5],
-  ] as V3[],
-  svgHarvested: [
-    [1.75, 2.3, 1.3],
-    [1.78, 1.9, 1.32],
-    [1.8, 1.5, 1.3],
-  ] as V3[],
-}
 
 function useGraftCurves() {
   return useMemo(() => {

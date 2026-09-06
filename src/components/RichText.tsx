@@ -33,14 +33,13 @@ export function Term({ k, children }: { k: string; children?: ReactNode }) {
   )
 }
 
-const RE = /\[\[([a-z0-9-]+)(?:\|([^\]]+))?\]\]|\*\*([^*]+)\*\*/gi
 
 /** Text s odkazy na slovníček ve tvaru [[klic]] nebo [[klic|text]]. */
 export function RichText({ text, className }: { text: string; className?: string }) {
   const parts: ReactNode[] = []
   let last = 0
   let m: RegExpExecArray | null
-  RE.lastIndex = 0
+  const RE = /\[\[([a-z0-9-]+)(?:\|([^\]]+))?\]\]|\*\*([^*]+)\*\*/gi
   let i = 0
   while ((m = RE.exec(text))) {
     if (m.index > last) parts.push(text.slice(last, m.index))

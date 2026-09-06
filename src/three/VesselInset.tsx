@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { Canvas, useFrame } from '@react-three/fiber'
 import type { HeartParams } from '../lib/pathology'
@@ -82,7 +82,9 @@ interface SceneProps {
 function InsetScene({ targets }: SceneProps) {
   const cur = useRef<Targets>({ ...targets })
   const tRef = useRef(targets)
-  tRef.current = targets
+  useEffect(() => {
+    tRef.current = targets
+  }, [targets])
 
   const plaqueRef = useRef<THREE.Group>(null)
   const coreRef = useRef<THREE.Mesh>(null)
@@ -331,12 +333,14 @@ function InsetScene({ targets }: SceneProps) {
 export function VesselInset({ params, caption }: { params: HeartParams; caption?: string }) {
   const targets = useMemo(() => targetsFrom(params), [params])
   return (
-    <div className="pointer-events-auto relative overflow-hidden rounded-xl border border-line bg-panel/85 shadow-xl shadow-black/40 backdrop-blur">
-      <div className="flex items-center justify-between px-2.5 py-1 text-[11px]">
-        <span className="font-semibold text-accent-2">Řez věnčitou tepnou (RIA) <span className="font-normal text-muted">· tok →</span></span>
-        {caption && <span className="text-muted">{caption}</span>}
+    <div className="pointer-events-auto relative w-[210px] overflow-hidden rounded-xl border border-line bg-panel/85 shadow-xl shadow-black/40 backdrop-blur sm:w-[340px]">
+      <div className="flex items-center justify-between gap-2 px-2.5 py-1 text-[11px]">
+        <span className="truncate font-semibold text-accent-2">
+          Řez RIA <span className="hidden font-normal text-muted sm:inline">· tok →</span>
+        </span>
+        {caption && <span className="truncate text-muted">{caption}</span>}
       </div>
-      <div className="h-[150px] w-[300px] sm:h-[170px] sm:w-[340px]">
+      <div className="h-[105px] w-full sm:h-[170px]">
         <Canvas camera={{ position: [0, 3.1, 3.5], fov: 30 }} dpr={[1, 1.5]} gl={{ antialias: true }}>
           <ambientLight intensity={0.6} />
           <directionalLight position={[2, 5, 4]} intensity={1.6} />

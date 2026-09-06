@@ -64,6 +64,10 @@ export interface AppState {
   treatmentStep: number
   setTreatmentStep: (s: number) => void
 
+  /** ilustrativní úroveň rizika z kalkulačky (0–1) */
+  riskLevel: number
+  setRiskLevel: (r: number) => void
+
   panelOpen: boolean
   setPanelOpen: (o: boolean) => void
   menuOpen: boolean
@@ -82,7 +86,7 @@ export const useStore = create<AppState>((set) => ({
       // převodní systém je vidět jen průhledným srdcem
       transparent: mode === 'prevodni' || mode === 'funkce' ? true : mode === 'anatomie' ? false : s.transparent,
       cutaway: mode === 'anatomie' ? s.cutaway : false,
-      panelOpen: false,
+      panelOpen: mode === 'prevence',
       menuOpen: false,
       autoSteps: false,
     })),
@@ -129,6 +133,9 @@ export const useStore = create<AppState>((set) => ({
     set((s) => ({ treatment, treatmentStep: 0, autoSteps: false, transparent: treatment === 'kardiostimulator' ? true : s.transparent })),
   treatmentStep: 0,
   setTreatmentStep: (treatmentStep) => set({ treatmentStep }),
+
+  riskLevel: 0.15,
+  setRiskLevel: (riskLevel) => set({ riskLevel }),
 
   panelOpen: false,
   setPanelOpen: (panelOpen) => set({ panelOpen }),

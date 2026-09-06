@@ -1,7 +1,8 @@
 import { useEffect, type ReactNode } from 'react'
 import { useStore } from './store'
 import { Scene } from './three/Scene'
-import { LeftMenu, modes } from './components/LeftMenu'
+import { LeftMenu } from './components/LeftMenu'
+import { modes } from './data/modes'
 import { RightPanel } from './components/RightPanel'
 import { ViewControls } from './components/ViewControls'
 import { tickHeartClock } from './lib/heartClock'
@@ -13,6 +14,7 @@ import { ConductionMenu, ConductionPanel, ConductionTimeline } from './modes/Con
 import { DiseaseMenu, DiseasePanel } from './modes/DiseaseMode'
 import { InfarctMenu, InfarctOverlay, InfarctPanel, InfarctTimeline } from './modes/InfarctMode'
 import { TreatmentMenu, TreatmentOverlay, TreatmentPanel, TreatmentTimeline } from './modes/TreatmentMode'
+import { PreventionMenu, PreventionPanel } from './modes/PreventionMode'
 import { EcgStrip } from './components/EcgStrip'
 
 /** Řídí hodiny srdce (fázi cyklu) podle přehrávání, rychlosti a rytmu. */
@@ -72,11 +74,8 @@ function useModeUI(): ModeUI {
         ecg: true,
         overlay: <TreatmentOverlay />,
       }
-    default:
-      return {
-        menu: <p className="text-sm text-muted">Tento režim se připravuje.</p>,
-        panel: <p className="text-sm text-muted">Tento režim se připravuje.</p>,
-      }
+    case 'prevence':
+      return { menu: <PreventionMenu />, panel: <PreventionPanel />, panelTitle: 'Prevence' }
   }
 }
 
