@@ -271,6 +271,10 @@ export const coronary = {
   ]),
 }
 
+/** Poloha léze v RIA (proximální třetina) a křivka RIA. */
+export const LAD_LESION_T = 0.3
+export const ladCurve = curveFrom(coronary.lad)
+
 /* ---------- Převodní systém ---------- */
 export const conduction = {
   saNode: [-1.0, 1.42, 0.12] as V3,

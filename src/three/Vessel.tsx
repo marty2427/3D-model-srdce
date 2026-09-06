@@ -19,7 +19,7 @@ interface VesselProps {
   roughness?: number
   metalness?: number
   visible?: boolean
-  animate?: (m: THREE.MeshStandardMaterial, baseEmissive: string, baseIntensity: number) => void
+  animate?: (m: THREE.MeshStandardMaterial, baseEmissive: string, baseIntensity: number, delta: number) => void
 }
 
 /** Trubice po Catmull-Rom křivce – cévy, převodní svazky, štěpy. */

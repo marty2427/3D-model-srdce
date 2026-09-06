@@ -13,7 +13,7 @@ interface ChamberProps {
   scale?: number
   emissive?: string
   emissiveIntensity?: number
-  animate?: (m: THREE.MeshStandardMaterial, baseEmissive: string, baseIntensity: number) => void
+  animate?: (m: THREE.MeshStandardMaterial, baseEmissive: string, baseIntensity: number, delta: number) => void
   visible?: boolean
 }
 

@@ -10,6 +10,7 @@ import { useHeartParams } from './three/params'
 import { AnatomyMenu, AnatomyPanel } from './modes/AnatomyMode'
 import { FunctionMenu, FunctionPanel, FunctionTimeline } from './modes/FunctionMode'
 import { ConductionMenu, ConductionPanel, ConductionTimeline } from './modes/ConductionMode'
+import { DiseaseMenu, DiseasePanel } from './modes/DiseaseMode'
 import { EcgStrip } from './components/EcgStrip'
 
 /** Řídí hodiny srdce (fázi cyklu) podle přehrávání, rychlosti a rytmu. */
@@ -47,6 +48,8 @@ function useModeUI(): ModeUI {
       return { menu: <FunctionMenu />, panel: <FunctionPanel />, panelTitle: 'Jak srdce funguje', timeline: <FunctionTimeline /> }
     case 'prevodni':
       return { menu: <ConductionMenu />, panel: <ConductionPanel />, panelTitle: 'Převodní systém', timeline: <ConductionTimeline />, ecg: true }
+    case 'nemoci':
+      return { menu: <DiseaseMenu />, panel: <DiseasePanel />, panelTitle: 'Nemoci', ecg: true }
     default:
       return {
         menu: <p className="text-sm text-muted">Tento režim se připravuje.</p>,

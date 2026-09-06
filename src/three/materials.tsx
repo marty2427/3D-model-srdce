@@ -49,7 +49,7 @@ interface HeartMaterialProps {
   opacity?: number
   flat?: boolean
   /** volá se každý snímek – umožňuje animovat barvu/záři (dostane základní emisi a intenzitu) */
-  animate?: (m: THREE.MeshStandardMaterial, baseEmissive: string, baseIntensity: number) => void
+  animate?: (m: THREE.MeshStandardMaterial, baseEmissive: string, baseIntensity: number, delta: number) => void
 }
 
 /** Standardní materiál srdečních struktur: reaguje na řez, průhlednost a výběr. */
@@ -76,8 +76,8 @@ export function HeartMaterial({
   const emI = hl === 2 ? 0.45 : hl === 1 ? 0.22 : (emissiveIntensity ?? 0)
   const isT = (transparent && !alwaysOpaque) || (opacity !== undefined && opacity < 1)
   const op = isT ? (opacity !== undefined && opacity < 1 ? opacity : transparentOpacity) : 1
-  useFrame(() => {
-    if (animate && ref.current) animate(ref.current, em, emI)
+  useFrame((_, delta) => {
+    if (animate && ref.current) animate(ref.current, em, emI, Math.min(delta, 0.1))
   })
   return (
     <meshStandardMaterial

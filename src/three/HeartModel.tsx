@@ -4,7 +4,7 @@ import { useFrame } from '@react-three/fiber'
 import { useStore } from '../store'
 import { heartClock } from '../lib/heartClock'
 import { atrialContraction, avValveOpen, semilunarOpen, ventricleContraction } from '../lib/cycle'
-import { coronary, ellipsoids, paths, curveFrom, type V3 } from './geometry'
+import { coronary, ellipsoids, paths, ladCurve, LAD_LESION_T, type V3 } from './geometry'
 import { colors, HeartMaterial } from './materials'
 import { Chamber } from './Chamber'
 import { Valve } from './Valve'
@@ -13,6 +13,7 @@ import { Pick } from './Pick'
 import { ConductionSystem, activation, conductionTiming } from './Conduction'
 import { Labels } from './Labels'
 import { BloodFlow } from './BloodFlow'
+import { LadLesion } from './Interventions'
 import { ParamsContext, useHeartParams, useParams } from './params'
 
 const VENT_PIVOT_Y = 0.35
@@ -129,9 +130,10 @@ function InfarctPatch({ visible }: { visible: boolean }) {
           color={colors.myocardium}
           opacity={0.999}
           roughness={0.7}
-          animate={(m) => {
-            m.color.lerp(target, 0.05)
-            m.opacity += (opacityTarget - m.opacity) * 0.06
+          animate={(m, _e, _i, dt) => {
+            const k = 1 - Math.exp(-dt * 3.5)
+            m.color.lerp(target, k)
+            m.opacity += (opacityTarget - m.opacity) * k
             m.visible = m.opacity > 0.02
           }}
         />
@@ -214,9 +216,6 @@ function GreatVessels() {
   )
 }
 
-/** Poloha léze v RIA (proximální třetina). */
-export const LAD_LESION_T = 0.3
-export const ladCurve = curveFrom(coronary.lad)
 
 function Coronaries() {
   const params = useParams()
@@ -286,6 +285,7 @@ export function HeartModel() {
             <group position={[0, -VENT_PIVOT_Y, 0]}>
               <Ventricles />
               <Coronaries />
+              {layers.koronarni && <LadLesion />}
               {showConduction && <ConductionSystem animated={mode === 'prevodni' || mode === 'nemoci' || mode === 'lecba'} />}
             </group>
           </group>
