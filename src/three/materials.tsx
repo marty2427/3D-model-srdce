@@ -1,5 +1,5 @@
 import { useContext, useRef } from 'react'
-import { cutPlane, PickContext } from './constants'
+import { cutPlane, deformUniforms, PickContext } from './constants'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useStore } from '../store'
@@ -30,18 +30,45 @@ interface HeartMaterialProps {
   map?: THREE.Texture | null
   /** krytí podle atributu aWeight (měkké okraje) */
   vertexAlpha?: boolean
+  /** deformace stahu ve vertex shaderu (stěna srdce mimo škálované skupiny) */
+  deform?: boolean
   /** volá se každý snímek – umožňuje animovat barvu/záři (dostane základní emisi a intenzitu) */
   animate?: (m: THREE.MeshStandardMaterial, baseEmissive: string, baseIntensity: number, delta: number) => void
 }
 
-/** Doplní do shaderu krytí podle atributu aWeight. */
-function injectVertexAlpha(shader: THREE.WebGLProgramParametersWithUniforms) {
-  shader.vertexShader = shader.vertexShader
-    .replace('#include <common>', '#include <common>\nattribute float aWeight;\nvarying float vWeight;')
-    .replace('#include <begin_vertex>', '#include <begin_vertex>\nvWeight = aWeight;')
-  shader.fragmentShader = shader.fragmentShader
-    .replace('#include <common>', '#include <common>\nvarying float vWeight;')
-    .replace('#include <alphamap_fragment>', '#include <alphamap_fragment>\ndiffuseColor.a *= vWeight;')
+function makeInjector(vertexAlpha: boolean, deform: boolean) {
+  return (shader: THREE.WebGLProgramParametersWithUniforms) => {
+    let vh = '#include <common>'
+    let vb = '#include <begin_vertex>'
+    let fh = '#include <common>'
+    let fa = '#include <alphamap_fragment>'
+    if (vertexAlpha) {
+      vh += '\nattribute float aWeight;\nvarying float vWeight;'
+      vb += '\nvWeight = aWeight;'
+      fh += '\nvarying float vWeight;'
+      fa += '\ndiffuseColor.a *= vWeight;'
+    }
+    if (deform) {
+      shader.uniforms.uScaleV = deformUniforms.uScaleV
+      shader.uniforms.uScaleA = deformUniforms.uScaleA
+      shader.uniforms.uPivotV = deformUniforms.uPivotV
+      shader.uniforms.uPivotA = deformUniforms.uPivotA
+      vh += '\nuniform vec3 uScaleV;\nuniform vec3 uScaleA;\nuniform float uPivotV;\nuniform float uPivotA;'
+      vb +=
+        '\n{ float wv = 1.0 - smoothstep(0.12, 0.55, position.y);' +
+        ' vec3 pv = vec3(0.0, uPivotV, 0.0) + (position - vec3(0.0, uPivotV, 0.0)) * uScaleV;' +
+        ' vec3 pa = vec3(0.0, uPivotA, 0.0) + (position - vec3(0.0, uPivotA, 0.0)) * uScaleA;' +
+        ' transformed = mix(pa, pv, wv); }'
+    }
+    shader.vertexShader = shader.vertexShader.replace('#include <common>', vh).replace('#include <begin_vertex>', vb)
+    shader.fragmentShader = shader.fragmentShader.replace('#include <common>', fh).replace('#include <alphamap_fragment>', fa)
+  }
+}
+const injectors = {
+  none: undefined,
+  alpha: makeInjector(true, false),
+  deform: makeInjector(false, true),
+  both: makeInjector(true, true),
 }
 
 /** Materiál srdečních struktur: reaguje na řez, průhlednost a výběr; fyzikální model s lesklým povrchem. */
@@ -62,6 +89,7 @@ export function HeartMaterial({
   clearcoat = 0.18,
   map = null,
   vertexAlpha = false,
+  deform = false,
   animate,
 }: HeartMaterialProps) {
   const ref = useRef<THREE.MeshPhysicalMaterial>(null)
@@ -93,7 +121,8 @@ export function HeartMaterial({
       flatShading={flat ?? false}
       vertexColors={vertexColors}
       map={map}
-      onBeforeCompile={vertexAlpha ? injectVertexAlpha : undefined}
+      onBeforeCompile={injectors[vertexAlpha ? (deform ? 'both' : 'alpha') : deform ? 'deform' : 'none']}
+      customProgramCacheKey={() => `heart-${vertexAlpha ? 1 : 0}-${deform ? 1 : 0}`}
       bumpMap={bump > 0 ? getMuscleBump() : null}
       bumpScale={bump}
       clearcoat={isT ? 0 : clearcoat}

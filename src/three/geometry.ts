@@ -80,20 +80,32 @@ export function tubeFrom(points: V3[], radius: number, segments = 48, radial = 1
   return new THREE.TubeGeometry(curve, segments, radius, radial, closed)
 }
 
+/**
+ * Profil kořene tepny s třemi Valsalvovými siny: vyboulení uprostřed délky, tři laloky po obvodu,
+ * na konci zúžení v sinotubulární junkci.
+ */
+export function sinusRadius(base: number, amp = 0.32) {
+  return (t: number, angle: number) => {
+    const along = Math.sin(Math.PI * Math.min(1, Math.max(0, (t - 0.02) / 0.9)))
+    const lobes = Math.pow(Math.max(0, Math.cos(3 * angle + 0.4)), 1.3)
+    return base * (0.94 + amp * along * (0.35 + 0.65 * lobes))
+  }
+}
+
 /** Trubice s proměnlivým poloměrem podél křivky (např. zužující se céva). */
-export function taperedTube(points: V3[], radiusFn: (t: number) => number, segments = 64, radial = 12) {
+export function taperedTube(points: V3[], radiusFn: (t: number, angle: number) => number, segments = 64, radial = 12) {
   const curve = curveFrom(points)
   const geo = new THREE.TubeGeometry(curve, segments, 1, radial, false)
   const pos = geo.attributes.position as THREE.BufferAttribute
   const frames = curve.computeFrenetFrames(segments, false)
   for (let i = 0; i <= segments; i++) {
     const t = i / segments
-    const r = radiusFn(t)
     const center = curve.getPointAt(t)
     const N = frames.normals[i]
     const B = frames.binormals[i]
     for (let j = 0; j <= radial; j++) {
       const v = (j / radial) * Math.PI * 2
+      const r = radiusFn(t, v)
       const sin = Math.sin(v)
       const cos = -Math.cos(v)
       tmpV.set(
@@ -111,9 +123,14 @@ export function taperedTube(points: V3[], radiusFn: (t: number) => number, segme
 
 /* ---------- Dráhy velkých cév ---------- */
 export const paths = {
+  aorticRoot: [
+    [0.0, 0.47, -0.05],
+    [0.0, 0.7, -0.05],
+    [0.0, 0.98, -0.05],
+  ] as V3[],
   aorta: [
-    [0.0, 0.5, -0.05],
     [0.0, 0.95, -0.05],
+    [-0.02, 1.2, -0.07],
     [-0.05, 1.45, -0.1],
     [-0.05, 1.9, -0.2],
     [0.1, 2.25, -0.4],

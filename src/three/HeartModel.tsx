@@ -4,11 +4,13 @@ import { useFrame } from '@react-three/fiber'
 import { useStore } from '../store'
 import { heartClock } from '../lib/heartClock'
 import { activation, atrialContraction, avValveOpen, conductionTiming, semilunarOpen, ventricleContraction } from '../lib/cycle'
-import { coronary, curveFrom, cardiacVeins, ellipsoids, paths, ladCurve, LAD_LESION_T, type V3 } from './geometry'
+import { coronary, curveFrom, cardiacVeins, ellipsoids, paths, ladCurve, LAD_LESION_T, sinusRadius, type V3 } from './geometry'
 import { HeartMaterial } from './materials'
 import { colors } from './constants'
 import { buildBlob, extractTriangles } from './blob'
 import { getEpicardiumMap } from './textures'
+import { LeftVentricleInterior, RightVentricleInterior, VentricleCavity } from './Interior'
+import { deformUniforms } from './constants'
 import { Valve } from './Valve'
 import { Vessel, VesselCap } from './Vessel'
 import { Pick } from './Pick'
@@ -153,29 +155,51 @@ function Cavity({ e, color, f, dil = 1 }: { e: typeof ellipsoids.lv; color: stri
   )
 }
 
+/** Stěna dutiny – leží mimo škálované skupiny, stah řeší vertex shader (spojitý šev). */
 function Wall({ geometry, visible, animate }: { geometry: THREE.BufferGeometry; visible: boolean; animate?: Parameters<typeof HeartMaterial>[0]['animate'] }) {
-  const transparent = useStore((s) => s.transparent)
   return (
-    <mesh geometry={geometry} visible={visible} castShadow={!transparent} receiveShadow>
-      <HeartMaterial color="#ffffff" vertexColors bump={0.009} map={getEpicardiumMap()} animate={animate} />
+    <mesh geometry={geometry} visible={visible} receiveShadow>
+      <HeartMaterial color="#ffffff" vertexColors bump={0.006} map={getEpicardiumMap()} animate={animate} deform />
     </mesh>
   )
 }
 
-function Atria() {
+/** Stěny všech dutin (nesškálované – deformace ve shaderu). */
+function Walls() {
   const layers = useStore((s) => s.layers)
-  const { raGlow, laGlow } = useChamberGlow()
+  const { raGlow, laGlow, vGlow } = useChamberGlow()
   const body = useContext(BodyContext)!
   const visible = layers.svalovina
   return (
     <>
       <Pick id="prava-sin">
         <Wall geometry={body.raGeo} visible={visible} animate={raGlow} />
-        {visible && <Cavity e={ellipsoids.ra} color={colors.cavityDeoxy} f={0.8} />}
       </Pick>
       <Pick id="leva-sin">
         <Wall geometry={body.laGeo} visible={visible} animate={laGlow} />
-        {visible && <Cavity e={ellipsoids.la} color={colors.cavityOxy} f={0.78} />}
+      </Pick>
+      <Pick id="prava-komora">
+        <Wall geometry={body.rvGeo} visible={visible} animate={vGlow} />
+      </Pick>
+      <Pick id="leva-komora">
+        <Wall geometry={body.lvGeo} visible={visible} animate={vGlow} />
+      </Pick>
+      <InfarctPatch visible={visible} geometry={body.patch} />
+    </>
+  )
+}
+
+function Atria() {
+  const layers = useStore((s) => s.layers)
+  const visible = layers.svalovina
+  if (!visible) return null
+  return (
+    <>
+      <Pick id="prava-sin">
+        <Cavity e={ellipsoids.ra} color={colors.cavityDeoxy} f={0.8} />
+      </Pick>
+      <Pick id="leva-sin">
+        <Cavity e={ellipsoids.la} color={colors.cavityOxy} f={0.78} />
       </Pick>
     </>
   )
@@ -184,22 +208,19 @@ function Atria() {
 function Ventricles() {
   const params = useParams()
   const layers = useStore((s) => s.layers)
-  const { vGlow } = useChamberGlow()
-  const body = useContext(BodyContext)!
   const visible = layers.svalovina
   return (
     <>
       <Pick id="prava-komora">
-        <Wall geometry={body.rvGeo} visible={visible} animate={vGlow} />
-        {visible && <Cavity e={ellipsoids.rv} color={colors.cavityDeoxy} f={0.82} dil={params.rvDilate} />}
+        {visible && <VentricleCavity e={ellipsoids.rv} color="#5a3d78" f={0.82} dil={params.rvDilate} seed={2} />}
+        {visible && <RightVentricleInterior f={0.82} dil={params.rvDilate} />}
         {/* výtokový trakt pravé komory (infundibulum) */}
         <Vessel points={paths.rvot} radius={0.24} color={colors.myocardium} taper={(t) => 1.1 - 0.35 * t} visible={visible} />
       </Pick>
       <Pick id="leva-komora">
-        <Wall geometry={body.lvGeo} visible={visible} animate={vGlow} />
-        {visible && <Cavity e={ellipsoids.lv} color={colors.cavityOxy} f={params.lvCavity} dil={params.lvDilate} />}
+        {visible && <VentricleCavity e={ellipsoids.lv} color="#8a2a2e" f={params.lvCavity} dil={params.lvDilate} seed={1} />}
+        {visible && <LeftVentricleInterior f={params.lvCavity} dil={params.lvDilate} />}
       </Pick>
-      <InfarctPatch visible={visible} geometry={body.patch} />
     </>
   )
 }
@@ -281,13 +302,15 @@ function GreatVessels() {
   return (
     <>
       <Pick id="aorta">
-        <Vessel points={paths.aorta} radius={0.22} color={colors.artery} segments={96} radial={16} taper={(t) => (t < 0.1 ? 1.15 - t : 1 - t * 0.25)} />
+        {/* kořen aorty s Valsalvovými siny */}
+        <Vessel points={paths.aorticRoot} radius={0.2} color={colors.artery} segments={24} radial={36} taper={sinusRadius(1, 0.42)} />
+        <Vessel points={paths.aorta} radius={0.22} color={colors.artery} segments={96} radial={16} taper={(t) => 0.95 + 0.05 * Math.min(1, t * 10) - t * 0.22} />
         <Vessel points={paths.brachiocephalic} radius={0.085} color={colors.artery} segments={16} />
         <Vessel points={paths.leftCarotid} radius={0.07} color={colors.artery} segments={16} />
         <Vessel points={paths.leftSubclavian} radius={0.07} color={colors.artery} segments={16} />
       </Pick>
       <Pick id="plicnice">
-        <Vessel points={paths.pulmonaryTrunk} radius={0.2} color={colors.pulmonaryArtery} segments={32} />
+        <Vessel points={paths.pulmonaryTrunk} radius={0.2} color={colors.pulmonaryArtery} segments={40} radial={24} taper={(t, a) => (t < 0.3 ? sinusRadius(1, 0.3)(t / 0.3, a) : 1)} />
         <VesselCap at={paths.pulmonaryTrunk[3]} radius={0.19} color={colors.pulmonaryArtery} />
         <Vessel points={paths.rightPA} radius={0.15} color={colors.pulmonaryArtery} segments={40} />
         <Vessel points={paths.leftPA} radius={0.15} color={colors.pulmonaryArtery} segments={32} />
@@ -362,11 +385,13 @@ export function HeartModel() {
       let jitter = 0
       if (params.ventricularTachycardia) jitter = 0.015 * Math.sin(heartClock.time * 40)
       ventRef.current.scale.set(1 - 0.11 * c + jitter, 1 - 0.07 * c + jitter, 1 - 0.11 * c + jitter)
+      deformUniforms.uScaleV.value.copy(ventRef.current.scale)
     }
     if (atriaRef.current) {
       let jitter = 0
       if (params.atrialFibrillation) jitter = 0.02 * Math.sin(heartClock.time * 55) * Math.sin(heartClock.time * 37)
       atriaRef.current.scale.set(1 - 0.1 * a + jitter, 1 - 0.1 * a + jitter, 1 - 0.1 * a + jitter)
+      deformUniforms.uScaleA.value.copy(atriaRef.current.scale)
     }
   })
 
@@ -377,6 +402,7 @@ export function HeartModel() {
     <ParamsContext.Provider value={params}>
       <BodyContext.Provider value={body}>
       <group>
+        <Walls />
         {/* komory – škálují se kolem roviny chlopní */}
         <group position={[0, VENT_PIVOT_Y, 0]}>
           <group ref={ventRef}>

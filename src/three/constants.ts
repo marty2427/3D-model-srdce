@@ -30,3 +30,15 @@ export interface PickState {
   selected: boolean
 }
 export const PickContext = createContext<PickState>({ hovered: false, selected: false })
+
+/**
+ * Sdílené uniformy deformace stěny srdce: síně a komory se stahují s různým měřítkem kolem
+ * síňokomorové roviny; váha přechodu se počítá z výšky vrcholu, takže šev zůstává spojitý.
+ */
+export const deformUniforms = {
+  uScaleV: { value: new THREE.Vector3(1, 1, 1) },
+  uScaleA: { value: new THREE.Vector3(1, 1, 1) },
+  uPivotV: { value: 0.35 },
+  uPivotA: { value: 0.4 },
+}
+

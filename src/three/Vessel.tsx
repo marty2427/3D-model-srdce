@@ -8,7 +8,7 @@ interface VesselProps {
   points: V3[]
   radius: number
   color: string
-  taper?: (t: number) => number
+  taper?: (t: number, angle: number) => number
   segments?: number
   radial?: number
   clip?: boolean
@@ -44,7 +44,7 @@ export function Vessel({
 }: VesselProps) {
   const transparent = useStore((s) => s.transparent)
   const geo = useMemo(
-    () => (taper ? taperedTube(points, (t) => radius * taper(t), segments, radial) : tubeFrom(points, radius, segments, radial)),
+    () => (taper ? taperedTube(points, (t, a) => radius * taper(t, a), segments, radial) : tubeFrom(points, radius, segments, radial)),
     [points, radius, taper, segments, radial],
   )
   return (

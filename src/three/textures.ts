@@ -22,8 +22,8 @@ export function getMuscleBump() {
   for (let i = 0; i < 900; i++) {
     const x0 = rnd() * size
     const y0 = rnd() * size
-    const len = 30 + rnd() * 90
-    const ang = -0.6 + (rnd() - 0.5) * 0.35
+    const len = 14 + rnd() * 40
+    const ang = rnd() * Math.PI * 2
     const shade = 96 + Math.floor(rnd() * 64)
     ctx.strokeStyle = `rgba(${shade},${shade},${shade},${0.12 + rnd() * 0.2})`
     ctx.beginPath()

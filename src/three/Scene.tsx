@@ -80,8 +80,8 @@ function Lights() {
         color="#fff0e0"
         castShadow
         shadow-mapSize={[2048, 2048]}
-        shadow-bias={-0.0004}
-        shadow-normalBias={0.02}
+        shadow-bias={-0.0008}
+        shadow-normalBias={0.06}
         shadow-camera-near={1}
         shadow-camera-far={25}
         shadow-camera-left={-4}
