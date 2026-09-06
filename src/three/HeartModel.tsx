@@ -12,8 +12,8 @@ import { Vessel, VesselCap } from './Vessel'
 import { Pick } from './Pick'
 import { ConductionSystem, activation, conductionTiming } from './Conduction'
 import { Labels } from './Labels'
-import { BloodFlow } from './BloodFlow'
-import { LadLesion } from './Interventions'
+import { BloodFlow, CoronaryFlow } from './BloodFlow'
+import { Grafts, LadLesion, Pacemaker, Stent } from './Interventions'
 import { ParamsContext, useHeartParams, useParams } from './params'
 
 const VENT_PIVOT_Y = 0.35
@@ -286,6 +286,9 @@ export function HeartModel() {
               <Ventricles />
               <Coronaries />
               {layers.koronarni && <LadLesion />}
+              {layers.koronarni && <Stent />}
+              {layers.koronarni && <Grafts />}
+              {layers.koronarni && (mode === 'infarkt' || mode === 'lecba' || mode === 'nemoci') && <CoronaryFlow />}
               {showConduction && <ConductionSystem animated={mode === 'prevodni' || mode === 'nemoci' || mode === 'lecba'} />}
             </group>
           </group>
@@ -300,6 +303,7 @@ export function HeartModel() {
         </group>
         <Valves />
         <GreatVessels />
+        <Pacemaker />
         {(mode === 'funkce' || mode === 'nemoci') && <BloodFlow />}
         <Labels cutaway={cutaway} />
       </group>

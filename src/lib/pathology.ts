@@ -37,13 +37,17 @@ export interface HeartParams {
   balloon: number
   /** katetr/vodič zaveden 0–1 */
   wire: number
-  /** bypassy zobrazeny */
+  /** bypassy: 0 nic, 0.5 štěp odebrán (in situ), 1 našitý */
   graftLima: number
   graftSvg: number
+  /** tok štěpem 0–1 */
+  graftFlow: number
   /** kardiostimulátor */
   pacemaker: number
   /** trombolýza – rozpouštění trombu 0–1 */
   lysis: number
+  /** LDL částice pronikající do stěny (ukládání plátu) 0–1 */
+  ldl: number
 }
 
 export const defaultParams: HeartParams = {
@@ -69,8 +73,10 @@ export const defaultParams: HeartParams = {
   wire: 0,
   graftLima: 0,
   graftSvg: 0,
+  graftFlow: 0,
   pacemaker: 0,
   lysis: 0,
+  ldl: 0,
 }
 
 export function getHeartParams(s: Pick<AppState, 'mode' | 'disease' | 'infarctStep' | 'treatment' | 'treatmentStep'>): HeartParams {
@@ -133,6 +139,7 @@ export function getHeartParams(s: Pick<AppState, 'mode' | 'disease' | 'infarctSt
 
   if (s.mode === 'infarkt') {
     const st = s.infarctStep
+    if (st === 1) p.ldl = 1
     if (st >= 1) p.ladPlaque = st === 1 ? 0.35 : 0.72
     if (st >= 2) {
       p.ladFlow = 0.5
@@ -193,11 +200,16 @@ export function getHeartParams(s: Pick<AppState, 'mode' | 'disease' | 'infarctSt
         }
         break
       case 'cabg':
+        if (st >= 1) {
+          p.graftLima = 0.5
+          p.graftSvg = 0.5
+        }
         if (st >= 2) {
           p.graftLima = 1
           p.graftSvg = 1
         }
         if (st >= 3) {
+          p.graftFlow = 1
           p.ladFlow = 1
           p.infarct = 0.15
           p.ecg = 'normal'

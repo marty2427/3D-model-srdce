@@ -55,6 +55,9 @@ export interface AppState {
 
   infarctStep: number
   setInfarctStep: (s: number) => void
+  /** automatické přehrávání kroků (infarkt, léčba) */
+  autoSteps: boolean
+  setAutoSteps: (a: boolean) => void
 
   treatment: TreatmentId
   setTreatment: (t: TreatmentId) => void
@@ -81,6 +84,7 @@ export const useStore = create<AppState>((set) => ({
       cutaway: mode === 'anatomie' ? s.cutaway : false,
       panelOpen: false,
       menuOpen: false,
+      autoSteps: false,
     })),
 
   selected: null,
@@ -117,9 +121,12 @@ export const useStore = create<AppState>((set) => ({
 
   infarctStep: 0,
   setInfarctStep: (infarctStep) => set({ infarctStep }),
+  autoSteps: false,
+  setAutoSteps: (autoSteps) => set({ autoSteps }),
 
   treatment: 'pci',
-  setTreatment: (treatment) => set({ treatment, treatmentStep: 0, playing: false }),
+  setTreatment: (treatment) =>
+    set((s) => ({ treatment, treatmentStep: 0, autoSteps: false, transparent: treatment === 'kardiostimulator' ? true : s.transparent })),
   treatmentStep: 0,
   setTreatmentStep: (treatmentStep) => set({ treatmentStep }),
 

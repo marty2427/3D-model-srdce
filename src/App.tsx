@@ -11,6 +11,8 @@ import { AnatomyMenu, AnatomyPanel } from './modes/AnatomyMode'
 import { FunctionMenu, FunctionPanel, FunctionTimeline } from './modes/FunctionMode'
 import { ConductionMenu, ConductionPanel, ConductionTimeline } from './modes/ConductionMode'
 import { DiseaseMenu, DiseasePanel } from './modes/DiseaseMode'
+import { InfarctMenu, InfarctOverlay, InfarctPanel, InfarctTimeline } from './modes/InfarctMode'
+import { TreatmentMenu, TreatmentOverlay, TreatmentPanel, TreatmentTimeline } from './modes/TreatmentMode'
 import { EcgStrip } from './components/EcgStrip'
 
 /** Řídí hodiny srdce (fázi cyklu) podle přehrávání, rychlosti a rytmu. */
@@ -37,6 +39,8 @@ interface ModeUI {
   panelTitle?: string
   timeline?: ReactNode
   ecg?: boolean
+  /** překryv v levém dolním rohu scény */
+  overlay?: ReactNode
 }
 
 function useModeUI(): ModeUI {
@@ -50,6 +54,24 @@ function useModeUI(): ModeUI {
       return { menu: <ConductionMenu />, panel: <ConductionPanel />, panelTitle: 'Převodní systém', timeline: <ConductionTimeline />, ecg: true }
     case 'nemoci':
       return { menu: <DiseaseMenu />, panel: <DiseasePanel />, panelTitle: 'Nemoci', ecg: true }
+    case 'infarkt':
+      return {
+        menu: <InfarctMenu />,
+        panel: <InfarctPanel />,
+        panelTitle: 'Infarkt krok za krokem',
+        timeline: <InfarctTimeline />,
+        ecg: true,
+        overlay: <InfarctOverlay />,
+      }
+    case 'lecba':
+      return {
+        menu: <TreatmentMenu />,
+        panel: <TreatmentPanel />,
+        panelTitle: 'Léčba',
+        timeline: <TreatmentTimeline />,
+        ecg: true,
+        overlay: <TreatmentOverlay />,
+      }
     default:
       return {
         menu: <p className="text-sm text-muted">Tento režim se připravuje.</p>,
@@ -114,7 +136,8 @@ export default function App() {
               </button>
             )}
           </div>
-          {!selected && (
+          {ui.overlay && <div className="pointer-events-none absolute bottom-3 left-3 z-10">{ui.overlay}</div>}
+          {!selected && !ui.overlay && (
             <div className="pointer-events-none absolute bottom-3 left-3 z-10 hidden text-[11px] text-muted md:block">
               Klikněte na strukturu pro popis • táhněte pro otočení • kolečko = zoom • pravé tlačítko = posun
             </div>

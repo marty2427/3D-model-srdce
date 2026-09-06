@@ -1,7 +1,7 @@
 import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
-import { bloodPaths, curveFrom, type V3 } from './geometry'
+import { bloodPaths, curveFrom, ladCurve, LAD_LESION_T, type V3 } from './geometry'
 import { heartClock } from '../lib/heartClock'
 import { avValveOpen, semilunarOpen, atrialContraction } from '../lib/cycle'
 import { useParams } from './params'
@@ -126,5 +126,47 @@ export function BloodFlow() {
       <FlowPath points={bloodPaths.oxyLeft} color="#ff4d45" ventricleAt={0.28} arteryAt={0.6} />
       {params.mitralRegurgitation && <Regurgitation />}
     </group>
+  )
+}
+
+/** Částice krve v RIA – před lézí tečou vždy, za lézí podle průtoku. */
+export function CoronaryFlow() {
+  const params = useParams()
+  const ref = useRef<THREE.InstancedMesh>(null)
+  const count = 40
+  const curve = ladCurve
+  const ts = useMemo(() => Float32Array.from({ length: count }, () => Math.random()), [])
+  const geo = useMemo(() => new THREE.SphereGeometry(0.022, 6, 5), [])
+  const v = useMemo(() => new THREE.Vector3(), [])
+  useFrame(() => {
+    const mesh = ref.current
+    if (!mesh) return
+    const pulse = 0.4 + 0.6 * (1 - semilunarOpen(heartClock.phase)) // věnčité tepny se plní v diastole
+    const blocked = params.ladFlow < 0.05 || params.ladThrombus > 0.5
+    const bypass = blocked && params.graftFlow > 0
+    const ANAST = 0.6
+    for (let i = 0; i < count; i++) {
+      let t = ts[i]
+      const past = t > LAD_LESION_T
+      const f = past ? params.ladFlow : 1
+      t += heartClock.dt * 0.12 * pulse * (0.15 + 0.85 * f)
+      if (blocked && t > LAD_LESION_T - 0.02 && t < LAD_LESION_T + 0.05) t = bypass ? ANAST + Math.random() * 0.02 : Math.random() * 0.02
+      if (t >= 1) t -= 1
+      ts[i] = t
+      curve.getPointAt(t, v)
+      v.x += Math.sin(i * 3.1) * 0.02
+      v.z += Math.cos(i * 5.7) * 0.02
+      dummy.position.copy(v)
+      const hidden = past && (bypass ? t < ANAST : blocked)
+      dummy.scale.setScalar(hidden ? 0 : 1)
+      dummy.updateMatrix()
+      mesh.setMatrixAt(i, dummy.matrix)
+    }
+    mesh.instanceMatrix.needsUpdate = true
+  })
+  return (
+    <instancedMesh ref={ref} args={[geo, undefined, count]} frustumCulled={false}>
+      <meshStandardMaterial color="#ffb3ad" emissive="#ff6a5b" emissiveIntensity={0.9} />
+    </instancedMesh>
   )
 }
