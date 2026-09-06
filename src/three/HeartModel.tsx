@@ -12,6 +12,7 @@ import { Vessel, VesselCap } from './Vessel'
 import { Pick } from './Pick'
 import { ConductionSystem, activation, conductionTiming } from './Conduction'
 import { Labels } from './Labels'
+import { BloodFlow } from './BloodFlow'
 import { ParamsContext, useHeartParams, useParams } from './params'
 
 const VENT_PIVOT_Y = 0.35
@@ -299,6 +300,7 @@ export function HeartModel() {
         </group>
         <Valves />
         <GreatVessels />
+        {(mode === 'funkce' || mode === 'nemoci') && <BloodFlow />}
         <Labels cutaway={cutaway} />
       </group>
     </ParamsContext.Provider>

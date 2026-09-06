@@ -75,9 +75,10 @@ export const useStore = create<AppState>((set) => ({
       selected: null,
       playing: true,
       cycleStep: null,
-      speed: mode === 'funkce' ? 0.3 : mode === 'prevodni' ? 0.35 : 1,
+      speed: mode === 'funkce' ? 0.25 : mode === 'prevodni' ? 0.25 : 1,
       // převodní systém je vidět jen průhledným srdcem
-      transparent: mode === 'prevodni' ? true : s.transparent,
+      transparent: mode === 'prevodni' || mode === 'funkce' ? true : mode === 'anatomie' ? false : s.transparent,
+      cutaway: mode === 'anatomie' ? s.cutaway : false,
       panelOpen: false,
       menuOpen: false,
     })),

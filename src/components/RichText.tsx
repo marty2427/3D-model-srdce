@@ -33,7 +33,7 @@ export function Term({ k, children }: { k: string; children?: ReactNode }) {
   )
 }
 
-const RE = /\[\[([a-z0-9-]+)(?:\|([^\]]+))?\]\]/gi
+const RE = /\[\[([a-z0-9-]+)(?:\|([^\]]+))?\]\]|\*\*([^*]+)\*\*/gi
 
 /** Text s odkazy na slovníček ve tvaru [[klic]] nebo [[klic|text]]. */
 export function RichText({ text, className }: { text: string; className?: string }) {
@@ -44,11 +44,13 @@ export function RichText({ text, className }: { text: string; className?: string
   let i = 0
   while ((m = RE.exec(text))) {
     if (m.index > last) parts.push(text.slice(last, m.index))
-    parts.push(
-      <Term key={i++} k={m[1]}>
-        {m[2] ?? glossary[m[1]]?.term ?? m[1]}
-      </Term>,
-    )
+    if (m[3] !== undefined) parts.push(<strong key={i++} className="font-semibold text-ink">{m[3]}</strong>)
+    else
+      parts.push(
+        <Term key={i++} k={m[1]}>
+          {m[2] ?? glossary[m[1]]?.term ?? m[1]}
+        </Term>,
+      )
     last = m.index + m[0].length
   }
   if (last < text.length) parts.push(text.slice(last))

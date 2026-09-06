@@ -5,8 +5,12 @@ import { LeftMenu, modes } from './components/LeftMenu'
 import { RightPanel } from './components/RightPanel'
 import { ViewControls } from './components/ViewControls'
 import { tickHeartClock } from './lib/heartClock'
+import { conductionSteps, cyclePhases } from './lib/cycle'
 import { useHeartParams } from './three/params'
 import { AnatomyMenu, AnatomyPanel } from './modes/AnatomyMode'
+import { FunctionMenu, FunctionPanel, FunctionTimeline } from './modes/FunctionMode'
+import { ConductionMenu, ConductionPanel, ConductionTimeline } from './modes/ConductionMode'
+import { EcgStrip } from './components/EcgStrip'
 
 /** Řídí hodiny srdce (fázi cyklu) podle přehrávání, rychlosti a rytmu. */
 function useHeartClockDriver() {
@@ -15,7 +19,10 @@ function useHeartClockDriver() {
     let raf = 0
     const loop = (now: number) => {
       const s = useStore.getState()
-      tickHeartClock(now, s.playing, s.speed, { bpm: params.bpm, irregularity: params.irregularity }, Math.random)
+      const list = s.mode === 'prevodni' ? conductionSteps : cyclePhases
+      const range: [number, number] | undefined =
+        s.cycleStep !== null && list[s.cycleStep] ? [list[s.cycleStep].from, list[s.cycleStep].to] : undefined
+      tickHeartClock(now, s.playing || s.cycleStep !== null, s.speed, { bpm: params.bpm, irregularity: params.irregularity }, Math.random, range)
       raf = requestAnimationFrame(loop)
     }
     raf = requestAnimationFrame(loop)
@@ -28,6 +35,7 @@ interface ModeUI {
   panel: ReactNode
   panelTitle?: string
   timeline?: ReactNode
+  ecg?: boolean
 }
 
 function useModeUI(): ModeUI {
@@ -35,6 +43,10 @@ function useModeUI(): ModeUI {
   switch (mode) {
     case 'anatomie':
       return { menu: <AnatomyMenu />, panel: <AnatomyPanel />, panelTitle: 'Anatomie' }
+    case 'funkce':
+      return { menu: <FunctionMenu />, panel: <FunctionPanel />, panelTitle: 'Jak srdce funguje', timeline: <FunctionTimeline /> }
+    case 'prevodni':
+      return { menu: <ConductionMenu />, panel: <ConductionPanel />, panelTitle: 'Převodní systém', timeline: <ConductionTimeline />, ecg: true }
     default:
       return {
         menu: <p className="text-sm text-muted">Tento režim se připravuje.</p>,
@@ -105,6 +117,7 @@ export default function App() {
             </div>
           )}
         </div>
+        {ui.ecg && <EcgStrip />}
         {ui.timeline && <div className="border-t border-line bg-panel">{ui.timeline}</div>}
       </main>
 

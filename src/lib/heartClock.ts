@@ -27,7 +27,15 @@ export const heartClock = {
 let lastFrame = 0
 
 /** Posune hodiny o reálný čas. Volá se jednou za snímek. */
-export function tickHeartClock(now: number, playing: boolean, speed: number, rhythm: Rhythm, rng: () => number) {
+export function tickHeartClock(
+  now: number,
+  playing: boolean,
+  speed: number,
+  rhythm: Rhythm,
+  rng: () => number,
+  /** je-li zadáno, fáze se cyklí jen v tomto rozsahu (krokování) */
+  range?: [number, number],
+) {
   if (!lastFrame) lastFrame = now
   const realDt = Math.min(0.1, (now - lastFrame) / 1000)
   lastFrame = now
@@ -42,6 +50,11 @@ export function tickHeartClock(now: number, playing: boolean, speed: number, rhy
   heartClock.time += dt
   const step = dt / heartClock.beatLength
   let phase = heartClock.phase + step
+  if (range) {
+    if (phase < range[0] || phase >= range[1]) phase = range[0]
+    heartClock.phase = phase
+    return
+  }
   if (phase >= 1) {
     phase -= 1
     heartClock.beat += 1
