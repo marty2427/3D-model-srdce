@@ -59,7 +59,8 @@ function Background() {
 function Effects() {
   const { size } = useThree()
   const small = size.width < 800 || (typeof navigator !== 'undefined' && /Android|iPhone|iPad/i.test(navigator.userAgent))
-  if (small) return null
+  const disabled = typeof location !== 'undefined' && new URLSearchParams(location.search).get('ao') === '0'
+  if (small || disabled) return null
   return (
     <EffectComposer multisampling={0} enableNormalPass={false}>
       <N8AO aoRadius={0.45} intensity={2.4} distanceFalloff={0.8} quality="medium" halfRes />

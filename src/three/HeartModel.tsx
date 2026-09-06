@@ -97,28 +97,44 @@ function useHeartBody(lvDilate: number, rvDilate: number) {
     const shapes = [lv, rv, apex, ellipsoids.ra, raAuricle, ellipsoids.la, laAuricle]
     const colorV = muscleColor(colors.myocardium)
     const colorA = muscleColor(colors.atrium, 0.6)
-    let sideOf: Uint8Array | null = null
-    const blob = buildBlob({
-      shapes,
-      origin: [-0.05, 0.05, 0.0],
-      k: 0.26,
-      widthSegments: 160,
-      heightSegments: 120,
-      colorFn: (p, n, out) => {
-        // strana není v colorFn k dispozici – odhad podle výšky (síně nad AV rovinou)
-        const isAtrium = p.y > 0.45
-        ;(isAtrium ? colorA : colorV)(p, n, out)
-        // tukový polštář na bázi mezi cévami
-        const basePad = Math.max(0, 1 - Math.hypot((p.x - 0.05) / 0.55, (p.y - 0.75) / 0.35, (p.z - 0.15) / 0.5))
-        out.lerp(fatColor, basePad * 0.45)
-      },
-    })
-    sideOf = blob.side
-    const pick = (ids: number[]) => extractTriangles(blob.geometry, (i) => ids.includes(sideOf![i]))
-    const lvGeo = pick(SIDE.lv)
-    const rvGeo = pick(SIDE.rv)
-    const raGeo = pick(SIDE.ra)
-    const laGeo = pick(SIDE.la)
+    const withPad = (fn: ReturnType<typeof muscleColor>) => (p: THREE.Vector3, n: THREE.Vector3, out: THREE.Color) => {
+      fn(p, n, out)
+      // tukový polštář na bázi mezi cévami
+      const basePad = Math.max(0, 1 - Math.hypot((p.x - 0.05) / 0.55, (p.y - 0.75) / 0.35, (p.z - 0.15) / 0.5))
+      out.lerp(fatColor, basePad * 0.45)
+    }
+    // společné SDF, ale každá dutina trasovaná z vlastního středu (vůči němu je hvězdicovitá)
+    const blob = buildBlob({ shapes, origin: [0.05, -0.55, 0.1], k: 0.26, detail: 44, noiseAmp: 0.012, colorFn: withPad(colorV) })
+    const raBlob = buildBlob({ shapes, origin: ellipsoids.ra.center, k: 0.26, detail: 34, noiseAmp: 0.012, colorFn: withPad(colorA) })
+    const laBlob = buildBlob({ shapes, origin: ellipsoids.la.center, k: 0.26, detail: 34, noiseAmp: 0.012, colorFn: withPad(colorA) })
+    const sideOf = blob.side
+    const MAX_EDGE = 0.12
+    const OVERLAP = 0.16
+    /** o kolik je vrchol blíž k „mým“ tvarům než k ostatním (záporné = patří mně) */
+    const margin = (b: typeof blob, i: number, mine: number[]) => {
+      let dm = Infinity
+      let dо = Infinity
+      for (let sIdx = 0; sIdx < b.shapeCount; sIdx++) {
+        const d = b.dists[i * b.shapeCount + sIdx]
+        if (mine.includes(sIdx)) dm = Math.min(dm, d)
+        else dо = Math.min(dо, d)
+      }
+      return dm - dо
+    }
+    const VENT = [...SIDE.lv, ...SIDE.rv]
+    // komory: mezi LK a PK ostrá hranice (většina vrcholů), směrem k síním přesah přes hranici
+    const ventTri = (mine: number[], other: number[]) => (a: number, b: number, c: number) => {
+      const vs = [a, b, c]
+      const rvCount = vs.filter((v) => other.includes(sideOf[v])).length
+      if (rvCount >= 2) return false
+      const inMine = vs.filter((v) => mine.includes(sideOf[v]) || (!other.includes(sideOf[v]) && margin(blob, v, VENT) < OVERLAP)).length
+      return inMine >= 2
+    }
+    const lvGeo = extractTriangles(blob.geometry, () => true, 0, undefined, 2, MAX_EDGE, ventTri(SIDE.lv, SIDE.rv))
+    const rvGeo = extractTriangles(blob.geometry, () => true, 0, undefined, 2, MAX_EDGE, ventTri(SIDE.rv, SIDE.lv))
+    // síně s přesahem přes hranici ke komorám, aby na švu nevznikla škvíra
+    const raGeo = extractTriangles(raBlob.geometry, (i) => margin(raBlob, i, SIDE.ra) < OVERLAP, 0, undefined, 1, MAX_EDGE)
+    const laGeo = extractTriangles(laBlob.geometry, (i) => margin(laBlob, i, SIDE.la) < OVERLAP, 0, undefined, 1, MAX_EDGE)
     const pos = blob.geometry.attributes.position as THREE.BufferAttribute
     const c = Math.cos(-ellipsoids.lv.rotZ)
     const sn = Math.sin(-ellipsoids.lv.rotZ)
@@ -127,7 +143,7 @@ function useHeartBody(lvDilate: number, rvDilate: number) {
       return t * t * (3 - 2 * t)
     }
     const patchWeight = (i: number) => {
-      if (!SIDE.lv.includes(sideOf![i])) return 0
+      if (!SIDE.lv.includes(sideOf[i])) return 0
       const dx = pos.getX(i) - ellipsoids.lv.center[0]
       const dy = pos.getY(i) - ellipsoids.lv.center[1]
       const lx = dx * c - dy * sn
