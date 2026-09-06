@@ -27,6 +27,7 @@ Odborné pojmy v textech mají slovníčkový tooltip (najetím myší nebo klep
 - three.js, @react-three/fiber, @react-three/drei
 - Tailwind CSS 4
 - zustand (stav aplikace)
+- @react-three/postprocessing + n8ao (ambientní okluze a vyhlazení, jen na desktopu)
 
 ## Vývoj
 

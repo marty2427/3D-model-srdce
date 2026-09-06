@@ -67,6 +67,7 @@ export function buildBlob(o: BlobOptions): BlobResult {
   const n = pos.count
   const normals = new Float32Array(n * 3)
   const colors = new Float32Array(n * 3)
+  const uvs = new Float32Array(n * 2)
   const side = new Uint8Array(n)
   const dir = new THREE.Vector3()
   const p = new THREE.Vector3()
@@ -77,12 +78,14 @@ export function buildBlob(o: BlobOptions): BlobResult {
   const eps = 0.004
   for (let i = 0; i < n; i++) {
     dir.set(pos.getX(i), pos.getY(i), pos.getZ(i)).normalize()
-    // pochod po paprsku k první změně znaménka, pak bisekce
+    // pochod po paprsku: najdi poslední bod uvnitř tvaru (výběžky se neuříznou), pak bisekce
     let r0 = 0
-    let r1 = 0.05
-    while (r1 < 4 && sdf(ox + dir.x * r1, oy + dir.y * r1, oz + dir.z * r1) < 0) {
-      r0 = r1
-      r1 += 0.05
+    let r1 = 0.04
+    for (let r = 0.04; r < 4; r += 0.04) {
+      if (sdf(ox + dir.x * r, oy + dir.y * r, oz + dir.z * r) < 0) {
+        r0 = r
+        r1 = r + 0.04
+      }
     }
     for (let it = 0; it < 18; it++) {
       const rm = (r0 + r1) / 2
@@ -102,6 +105,21 @@ export function buildBlob(o: BlobOptions): BlobResult {
     normals[i * 3] = nn.x
     normals[i * 3 + 1] = nn.y
     normals[i * 3 + 2] = nn.z
+    // krychlová projekce UV podle dominantní osy normály – bez sbíhání textury v pólech
+    const ax = Math.abs(nn.x)
+    const ay = Math.abs(nn.y)
+    const az = Math.abs(nn.z)
+    const uvScale = 0.55
+    if (ax >= ay && ax >= az) {
+      uvs[i * 2] = p.z * uvScale
+      uvs[i * 2 + 1] = p.y * uvScale
+    } else if (ay >= az) {
+      uvs[i * 2] = p.x * uvScale
+      uvs[i * 2 + 1] = p.z * uvScale
+    } else {
+      uvs[i * 2] = p.x * uvScale
+      uvs[i * 2 + 1] = p.y * uvScale
+    }
     let best = 0
     let bd = Infinity
     for (let s = 0; s < o.shapes.length; s++) {
@@ -120,6 +138,7 @@ export function buildBlob(o: BlobOptions): BlobResult {
   }
   base.setAttribute('normal', new THREE.BufferAttribute(normals, 3))
   base.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+  base.setAttribute('uv', new THREE.BufferAttribute(uvs, 2))
   pos.needsUpdate = true
   base.computeBoundingSphere()
   return { geometry: base, sdf, side }
@@ -129,7 +148,13 @@ export function buildBlob(o: BlobOptions): BlobResult {
  * Vybere trojúhelníky, jejichž vrcholy splňují predikát (většinově), a vrátí novou (neindexovanou) geometrii.
  * `offset` posune vrcholy podél normály (např. záplata těsně nad povrchem).
  */
-export function extractTriangles(geo: THREE.BufferGeometry, keep: (index: number) => boolean, offset = 0) {
+export function extractTriangles(
+  geo: THREE.BufferGeometry,
+  keep: (index: number) => boolean,
+  offset = 0,
+  /** volitelná váha vrcholu 0–1 (atribut aWeight, např. měkký okraj záplaty) */
+  weight?: (index: number) => number,
+) {
   const index = geo.index!
   const pos = geo.attributes.position as THREE.BufferAttribute
   const nor = geo.attributes.normal as THREE.BufferAttribute
@@ -139,6 +164,7 @@ export function extractTriangles(geo: THREE.BufferGeometry, keep: (index: number
   const N: number[] = []
   const U: number[] = []
   const C: number[] = []
+  const W: number[] = []
   for (let t = 0; t < index.count; t += 3) {
     const a = index.getX(t)
     const b = index.getX(t + 1)
@@ -153,6 +179,7 @@ export function extractTriangles(geo: THREE.BufferGeometry, keep: (index: number
       N.push(nx, ny, nz)
       U.push(uv.getX(v), uv.getY(v))
       if (col) C.push(col.getX(v), col.getY(v), col.getZ(v))
+      if (weight) W.push(weight(v))
     }
   }
   const g = new THREE.BufferGeometry()
@@ -160,6 +187,7 @@ export function extractTriangles(geo: THREE.BufferGeometry, keep: (index: number
   g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3))
   g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2))
   if (col) g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3))
+  if (weight) g.setAttribute('aWeight', new THREE.Float32BufferAttribute(W, 1))
   g.computeBoundingSphere()
   return g
 }

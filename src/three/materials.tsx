@@ -26,8 +26,22 @@ interface HeartMaterialProps {
   bump?: number
   /** lesk vlhkého povrchu */
   clearcoat?: number
+  /** barevná mapa (násobí se s barvou) */
+  map?: THREE.Texture | null
+  /** krytí podle atributu aWeight (měkké okraje) */
+  vertexAlpha?: boolean
   /** volá se každý snímek – umožňuje animovat barvu/záři (dostane základní emisi a intenzitu) */
   animate?: (m: THREE.MeshStandardMaterial, baseEmissive: string, baseIntensity: number, delta: number) => void
+}
+
+/** Doplní do shaderu krytí podle atributu aWeight. */
+function injectVertexAlpha(shader: THREE.WebGLProgramParametersWithUniforms) {
+  shader.vertexShader = shader.vertexShader
+    .replace('#include <common>', '#include <common>\nattribute float aWeight;\nvarying float vWeight;')
+    .replace('#include <begin_vertex>', '#include <begin_vertex>\nvWeight = aWeight;')
+  shader.fragmentShader = shader.fragmentShader
+    .replace('#include <common>', '#include <common>\nvarying float vWeight;')
+    .replace('#include <alphamap_fragment>', '#include <alphamap_fragment>\ndiffuseColor.a *= vWeight;')
 }
 
 /** Materiál srdečních struktur: reaguje na řez, průhlednost a výběr; fyzikální model s lesklým povrchem. */
@@ -46,6 +60,8 @@ export function HeartMaterial({
   vertexColors = false,
   bump = 0,
   clearcoat = 0.18,
+  map = null,
+  vertexAlpha = false,
   animate,
 }: HeartMaterialProps) {
   const ref = useRef<THREE.MeshPhysicalMaterial>(null)
@@ -76,6 +92,8 @@ export function HeartMaterial({
       clipShadows
       flatShading={flat ?? false}
       vertexColors={vertexColors}
+      map={map}
+      onBeforeCompile={vertexAlpha ? injectVertexAlpha : undefined}
       bumpMap={bump > 0 ? getMuscleBump() : null}
       bumpScale={bump}
       clearcoat={isT ? 0 : clearcoat}

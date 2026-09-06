@@ -1,6 +1,8 @@
 import { Suspense, useEffect, useRef } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
 import { Environment, Lightformer, OrbitControls } from '@react-three/drei'
+import { EffectComposer, N8AO, SMAA } from '@react-three/postprocessing'
+import { getBackgroundMap } from './textures'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { useStore } from '../store'
 import { HeartModel } from './HeartModel'
@@ -43,15 +45,39 @@ function Controls() {
   )
 }
 
+/** Pozadí jako vzdálená plocha s přechodem – funguje i s postprocessingem. */
+function Background() {
+  return (
+    <mesh position={[0, 0.3, -30]} scale={[120, 80, 1]} renderOrder={-10}>
+      <planeGeometry />
+      <meshBasicMaterial map={getBackgroundMap()} depthWrite={false} toneMapped={false} />
+    </mesh>
+  )
+}
+
+/** Ambientní okluze a vyhlazení – jen na výkonnějších zařízeních. */
+function Effects() {
+  const { size } = useThree()
+  const small = size.width < 800 || (typeof navigator !== 'undefined' && /Android|iPhone|iPad/i.test(navigator.userAgent))
+  if (small) return null
+  return (
+    <EffectComposer multisampling={0} enableNormalPass={false}>
+      <N8AO aoRadius={0.45} intensity={2.4} distanceFalloff={0.8} quality="medium" halfRes />
+      <SMAA />
+    </EffectComposer>
+  )
+}
+
 function Lights() {
   return (
     <>
-      <ambientLight intensity={0.25} />
-      <hemisphereLight args={['#dfe7ff', '#3a2020', 0.4]} />
+      <ambientLight intensity={0.18} />
+      <hemisphereLight args={['#d9e3ff', '#3a1c1c', 0.35]} />
+      {/* hlavní světlo */}
       <directionalLight
         position={[4, 7, 6]}
-        intensity={2.2}
-        color="#fff1e4"
+        intensity={2.4}
+        color="#fff0e0"
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-bias={-0.0004}
@@ -63,8 +89,10 @@ function Lights() {
         shadow-camera-top={4.5}
         shadow-camera-bottom={-4}
       />
-      <directionalLight position={[-6, 3, -4]} intensity={0.5} color="#9fb4ff" />
-      <directionalLight position={[0, -6, 5]} intensity={0.3} color="#ffd8c8" />
+      {/* výplňové světlo a obrysové světlo zezadu pro oddělení od pozadí */}
+      <directionalLight position={[-6, 2, 3]} intensity={0.55} color="#a9bbff" />
+      <directionalLight position={[-2, 4, -7]} intensity={1.4} color="#ffd2c0" />
+      <directionalLight position={[0, -6, 5]} intensity={0.25} color="#ffd8c8" />
       {/* prostředí pro odlesky – bez externích souborů, jen světelné plochy */}
       <Environment resolution={256} frames={1}>
         <Lightformer intensity={3} form="rect" position={[0, 6, -8]} scale={[12, 6, 1]} color="#fff4ea" />
@@ -85,13 +113,15 @@ export function Scene() {
       shadows
       gl={{ antialias: true, localClippingEnabled: true, powerPreference: 'high-performance' }}
       onPointerMissed={() => select(null)}
-      style={{ background: 'radial-gradient(ellipse at 50% 40%, #182238 0%, #0b0f17 70%)' }}
+      style={{ background: '#0b0f17' }}
     >
+      <Background />
       <Lights />
       <Suspense fallback={null}>
         <HeartModel />
       </Suspense>
       <Controls />
+      <Effects />
     </Canvas>
   )
 }

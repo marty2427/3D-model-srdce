@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { createContext, useContext, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { useStore } from '../store'
@@ -8,6 +8,7 @@ import { coronary, curveFrom, cardiacVeins, ellipsoids, paths, ladCurve, LAD_LES
 import { HeartMaterial } from './materials'
 import { colors } from './constants'
 import { buildBlob, extractTriangles } from './blob'
+import { getEpicardiumMap } from './textures'
 import { Valve } from './Valve'
 import { Vessel, VesselCap } from './Vessel'
 import { Pick } from './Pick'
@@ -75,85 +76,106 @@ function muscleColor(base: string, fatAmount = 1) {
   }
 }
 
-/** Jednolitá svalová masa komor (hladké sjednocení LK a PK) rozdělená na část LK a PK. */
-function useVentricleGeometry(lvDilate: number, rvDilate: number) {
+/** Tvary tvořící tělo srdce. Index = "strana" vrcholu pro rozdělení na dutiny. */
+const apexBump = { center: [0.78, -1.62, -0.02] as V3, scale: [0.42, 0.55, 0.42] as V3, rotZ: 0.4 }
+const raAuricle = { center: [-0.55, 1.22, 0.4] as V3, scale: [0.34, 0.2, 0.24] as V3, rotZ: 0.5 }
+const laAuricle = { center: [0.62, 0.95, 0.1] as V3, scale: [0.34, 0.17, 0.22] as V3, rotZ: -0.4 }
+const SIDE = { lv: [0, 2], rv: [1], ra: [3, 4], la: [5, 6] }
+const fatColor = new THREE.Color('#e3c58e')
+
+/**
+ * Celé tělo srdce jako jeden hladký povrch (komory, hrot, síně, ouška), rozdělený na čtyři dutiny.
+ * Síně a komory se pak škálují ve vlastních skupinách kolem síňokomorové roviny, takže šev zůstává těsný.
+ */
+function useHeartBody(lvDilate: number, rvDilate: number) {
   return useMemo(() => {
     const lv = { ...ellipsoids.lv, scale: ellipsoids.lv.scale.map((v) => v * lvDilate) as V3 }
     const rv = { ...ellipsoids.rv, scale: ellipsoids.rv.scale.map((v) => v * rvDilate) as V3 }
-    const blob = buildBlob({ shapes: [lv, rv], origin: [0.05, -0.55, 0.1], k: 0.32, colorFn: muscleColor(colors.myocardium) })
-    const lvGeo = extractTriangles(blob.geometry, (i) => blob.side[i] === 0)
-    const rvGeo = extractTriangles(blob.geometry, (i) => blob.side[i] === 1)
-    // záplata přední stěny LK (povodí RIA): přední část LK bez báze + hrot
+    const apex = { ...apexBump, scale: apexBump.scale.map((v) => v * lvDilate) as V3 }
+    const shapes = [lv, rv, apex, ellipsoids.ra, raAuricle, ellipsoids.la, laAuricle]
+    const colorV = muscleColor(colors.myocardium)
+    const colorA = muscleColor(colors.atrium, 0.6)
+    let sideOf: Uint8Array | null = null
+    const blob = buildBlob({
+      shapes,
+      origin: [-0.05, 0.05, 0.0],
+      k: 0.26,
+      widthSegments: 160,
+      heightSegments: 120,
+      colorFn: (p, n, out) => {
+        // strana není v colorFn k dispozici – odhad podle výšky (síně nad AV rovinou)
+        const isAtrium = p.y > 0.45
+        ;(isAtrium ? colorA : colorV)(p, n, out)
+        // tukový polštář na bázi mezi cévami
+        const basePad = Math.max(0, 1 - Math.hypot((p.x - 0.05) / 0.55, (p.y - 0.75) / 0.35, (p.z - 0.15) / 0.5))
+        out.lerp(fatColor, basePad * 0.45)
+      },
+    })
+    sideOf = blob.side
+    const pick = (ids: number[]) => extractTriangles(blob.geometry, (i) => ids.includes(sideOf![i]))
+    const lvGeo = pick(SIDE.lv)
+    const rvGeo = pick(SIDE.rv)
+    const raGeo = pick(SIDE.ra)
+    const laGeo = pick(SIDE.la)
     const pos = blob.geometry.attributes.position as THREE.BufferAttribute
     const c = Math.cos(-ellipsoids.lv.rotZ)
     const sn = Math.sin(-ellipsoids.lv.rotZ)
-    const patch = extractTriangles(
-      blob.geometry,
-      (i) => {
-        if (blob.side[i] !== 0) return false
-        const dx = pos.getX(i) - ellipsoids.lv.center[0]
-        const dy = pos.getY(i) - ellipsoids.lv.center[1]
-        const lx = dx * c - dy * sn
-        const ly = dx * sn + dy * c
-        const lz = pos.getZ(i) - ellipsoids.lv.center[2]
-        const front = lz > 0.2 && ly < 0.55 && lx > -0.85
-        const apex = ly < -1.0
-        return front || apex
-      },
-      0.012,
-    )
-    return { lvGeo, rvGeo, patch }
+    const sm = (a: number, b: number, x: number) => {
+      const t = Math.min(1, Math.max(0, (x - a) / (b - a)))
+      return t * t * (3 - 2 * t)
+    }
+    const patchWeight = (i: number) => {
+      if (!SIDE.lv.includes(sideOf![i])) return 0
+      const dx = pos.getX(i) - ellipsoids.lv.center[0]
+      const dy = pos.getY(i) - ellipsoids.lv.center[1]
+      const lx = dx * c - dy * sn
+      const ly = dx * sn + dy * c
+      const lz = pos.getZ(i) - ellipsoids.lv.center[2]
+      const front = sm(0.05, 0.4, lz) * (1 - sm(0.45, 0.7, ly)) * sm(-1.0, -0.7, lx)
+      const apexR = 1 - sm(-1.15, -0.85, ly)
+      return Math.max(front, apexR)
+    }
+    const patch = extractTriangles(blob.geometry, (i) => patchWeight(i) > 0.01, 0.012, patchWeight)
+    return { lvGeo, rvGeo, raGeo, laGeo, patch }
   }, [lvDilate, rvDilate])
 }
 
-/** Síň s ouškem jako hladký tvar. */
-function useAtriumGeometry(e: typeof ellipsoids.ra, auricle: { center: V3; scale: V3; rotZ: number }) {
-  return useMemo(
-    () =>
-      buildBlob({
-        shapes: [e, auricle],
-        origin: e.center,
-        k: 0.22,
-        widthSegments: 72,
-        heightSegments: 54,
-        noiseAmp: 0.008,
-        colorFn: muscleColor(colors.atrium, 0.5),
-      }).geometry,
-    [e, auricle],
-  )
-}
+const BodyContext = createContext<ReturnType<typeof useHeartBody> | null>(null)
 
-const raAuricle = { center: [-0.55, 1.22, 0.4] as V3, scale: [0.32, 0.2, 0.22] as V3, rotZ: 0.5 }
-const laAuricle = { center: [0.62, 0.95, 0.08] as V3, scale: [0.32, 0.17, 0.2] as V3, rotZ: -0.4 }
-
-function Atria() {
-  const layers = useStore((s) => s.layers)
-  const transparent = useStore((s) => s.transparent)
-  const { raGlow, laGlow } = useChamberGlow()
-  const visible = layers.svalovina
-  const raGeo = useAtriumGeometry(ellipsoids.ra, raAuricle)
-  const laGeo = useAtriumGeometry(ellipsoids.la, laAuricle)
+function Cavity({ e, color, f, dil = 1 }: { e: typeof ellipsoids.lv; color: string; f: number; dil?: number }) {
   const cav = useMemo(() => new THREE.SphereGeometry(1, 32, 24), [])
-  const cavity = (e: typeof ellipsoids.ra, color: string, f: number) => (
+  return (
     <group position={e.center} rotation={[0, 0, e.rotZ]}>
-      <mesh geometry={cav} scale={[e.scale[0] * f, e.scale[1] * f, e.scale[2] * f]}>
+      <mesh geometry={cav} scale={[e.scale[0] * f * dil, e.scale[1] * f * dil, e.scale[2] * f * dil]}>
         <HeartMaterial color={color} side={THREE.BackSide} transparentOpacity={0.08} roughness={0.9} clearcoat={0} />
       </mesh>
     </group>
   )
+}
+
+function Wall({ geometry, visible, animate }: { geometry: THREE.BufferGeometry; visible: boolean; animate?: Parameters<typeof HeartMaterial>[0]['animate'] }) {
+  const transparent = useStore((s) => s.transparent)
+  return (
+    <mesh geometry={geometry} visible={visible} castShadow={!transparent} receiveShadow>
+      <HeartMaterial color="#ffffff" vertexColors bump={0.009} map={getEpicardiumMap()} animate={animate} />
+    </mesh>
+  )
+}
+
+function Atria() {
+  const layers = useStore((s) => s.layers)
+  const { raGlow, laGlow } = useChamberGlow()
+  const body = useContext(BodyContext)!
+  const visible = layers.svalovina
   return (
     <>
       <Pick id="prava-sin">
-        <mesh geometry={raGeo} visible={visible} castShadow={!transparent} receiveShadow>
-          <HeartMaterial color="#ffffff" vertexColors bump={0.012} animate={raGlow} />
-        </mesh>
-        {visible && cavity(ellipsoids.ra, colors.cavityDeoxy, 0.8)}
+        <Wall geometry={body.raGeo} visible={visible} animate={raGlow} />
+        {visible && <Cavity e={ellipsoids.ra} color={colors.cavityDeoxy} f={0.8} />}
       </Pick>
       <Pick id="leva-sin">
-        <mesh geometry={laGeo} visible={visible} castShadow={!transparent} receiveShadow>
-          <HeartMaterial color="#ffffff" vertexColors bump={0.012} animate={laGlow} />
-        </mesh>
-        {visible && cavity(ellipsoids.la, colors.cavityOxy, 0.78)}
+        <Wall geometry={body.laGeo} visible={visible} animate={laGlow} />
+        {visible && <Cavity e={ellipsoids.la} color={colors.cavityOxy} f={0.78} />}
       </Pick>
     </>
   )
@@ -162,35 +184,22 @@ function Atria() {
 function Ventricles() {
   const params = useParams()
   const layers = useStore((s) => s.layers)
-  const transparent = useStore((s) => s.transparent)
   const { vGlow } = useChamberGlow()
+  const body = useContext(BodyContext)!
   const visible = layers.svalovina
-  const { lvGeo, rvGeo, patch } = useVentricleGeometry(params.lvDilate, params.rvDilate)
-  const cav = useMemo(() => new THREE.SphereGeometry(1, 32, 24), [])
-  const cavity = (e: typeof ellipsoids.lv, color: string, f: number, dil: number) => (
-    <group position={e.center} rotation={[0, 0, e.rotZ]}>
-      <mesh geometry={cav} scale={[e.scale[0] * f * dil, e.scale[1] * f * dil, e.scale[2] * f * dil]}>
-        <HeartMaterial color={color} side={THREE.BackSide} transparentOpacity={0.08} roughness={0.9} clearcoat={0} />
-      </mesh>
-    </group>
-  )
   return (
     <>
       <Pick id="prava-komora">
-        <mesh geometry={rvGeo} visible={visible} castShadow={!transparent} receiveShadow>
-          <HeartMaterial color="#ffffff" vertexColors bump={0.018} animate={vGlow} />
-        </mesh>
-        {visible && cavity(ellipsoids.rv, colors.cavityDeoxy, 0.82, params.rvDilate)}
+        <Wall geometry={body.rvGeo} visible={visible} animate={vGlow} />
+        {visible && <Cavity e={ellipsoids.rv} color={colors.cavityDeoxy} f={0.82} dil={params.rvDilate} />}
         {/* výtokový trakt pravé komory (infundibulum) */}
         <Vessel points={paths.rvot} radius={0.24} color={colors.myocardium} taper={(t) => 1.1 - 0.35 * t} visible={visible} />
       </Pick>
       <Pick id="leva-komora">
-        <mesh geometry={lvGeo} visible={visible} castShadow={!transparent} receiveShadow>
-          <HeartMaterial color="#ffffff" vertexColors bump={0.018} animate={vGlow} />
-        </mesh>
-        {visible && cavity(ellipsoids.lv, colors.cavityOxy, params.lvCavity, params.lvDilate)}
+        <Wall geometry={body.lvGeo} visible={visible} animate={vGlow} />
+        {visible && <Cavity e={ellipsoids.lv} color={colors.cavityOxy} f={params.lvCavity} dil={params.lvDilate} />}
       </Pick>
-      <InfarctPatch visible={visible} geometry={patch} />
+      <InfarctPatch visible={visible} geometry={body.patch} />
     </>
   )
 }
@@ -211,7 +220,9 @@ function InfarctPatch({ visible, geometry }: { visible: boolean; geometry: THREE
         color={colors.myocardium}
         opacity={0.999}
         roughness={0.7}
-        bump={0.018}
+        bump={0.014}
+        map={getEpicardiumMap()}
+        vertexAlpha
         animate={(m, _e, _i, dt) => {
           const k = 1 - Math.exp(-dt * 3.5)
           m.color.lerp(target, k)
@@ -360,9 +371,11 @@ export function HeartModel() {
   })
 
   const showConduction = layers.prevodni || mode === 'prevodni'
+  const body = useHeartBody(params.lvDilate, params.rvDilate)
 
   return (
     <ParamsContext.Provider value={params}>
+      <BodyContext.Provider value={body}>
       <group>
         {/* komory – škálují se kolem roviny chlopní */}
         <group position={[0, VENT_PIVOT_Y, 0]}>
@@ -392,6 +405,7 @@ export function HeartModel() {
         {(mode === 'funkce' || mode === 'nemoci') && <BloodFlow />}
         <Labels cutaway={cutaway} />
       </group>
+      </BodyContext.Provider>
     </ParamsContext.Provider>
   )
 }
