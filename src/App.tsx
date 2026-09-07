@@ -27,7 +27,7 @@ function useHeartClockDriver() {
       const list = s.mode === 'prevodni' ? conductionSteps : cyclePhases
       const range: [number, number] | undefined =
         s.cycleStep !== null && list[s.cycleStep] ? [list[s.cycleStep].from, list[s.cycleStep].to] : undefined
-      tickHeartClock(now, s.playing || s.cycleStep !== null, s.speed, { bpm: params.bpm, irregularity: params.irregularity }, Math.random, range)
+      tickHeartClock(now, !s.heartPaused && (s.playing || s.cycleStep !== null), s.speed, { bpm: params.bpm, irregularity: params.irregularity }, Math.random, range)
       raf = requestAnimationFrame(loop)
     }
     raf = requestAnimationFrame(loop)
@@ -77,6 +77,25 @@ function useModeUI(): ModeUI {
     case 'prevence':
       return { menu: <PreventionMenu />, panel: <PreventionPanel />, panelTitle: 'Prevence' }
   }
+}
+
+/** Zastaví / spustí tep srdce (globálně, ve všech režimech). */
+function HeartPauseButton() {
+  const paused = useStore((s) => s.heartPaused)
+  const toggle = useStore((s) => s.toggleHeartPaused)
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      className={`pointer-events-auto inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium backdrop-blur transition-colors ${
+        paused ? 'border-accent-2/70 bg-accent-2/20 text-white' : 'border-line bg-panel/90 text-ink hover:border-muted/60'
+      }`}
+      title={paused ? 'Spustit tep srdce' : 'Zastavit tep srdce'}
+    >
+      <span aria-hidden>{paused ? '▶' : '⏸'}</span>
+      {paused ? 'Spustit tep' : 'Zastavit tep'}
+    </button>
+  )
 }
 
 export default function App() {
@@ -135,12 +154,15 @@ export default function App() {
               </button>
             )}
           </div>
-          {ui.overlay && <div className="pointer-events-none absolute bottom-3 left-3 z-10">{ui.overlay}</div>}
-          {!selected && !ui.overlay && (
-            <div className="pointer-events-none absolute bottom-3 left-3 z-10 hidden text-[11px] text-muted md:block">
-              Klikněte na strukturu pro popis • táhněte pro otočení • kolečko = zoom • pravé tlačítko = posun
-            </div>
-          )}
+          <div className="pointer-events-none absolute bottom-3 left-3 z-10 flex flex-col items-start gap-2">
+            {ui.overlay}
+            <HeartPauseButton />
+            {!selected && !ui.overlay && (
+              <div className="hidden text-[11px] text-muted md:block">
+                Klikněte na strukturu pro popis • táhněte pro otočení • kolečko = zoom • pravé tlačítko = posun
+              </div>
+            )}
+          </div>
         </div>
         {ui.ecg && <EcgStrip />}
         {ui.timeline && <div className="border-t border-line bg-panel">{ui.timeline}</div>}

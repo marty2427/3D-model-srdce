@@ -3,6 +3,7 @@ import { Canvas, useThree } from '@react-three/fiber'
 import { Environment, Lightformer, OrbitControls } from '@react-three/drei'
 import { EffectComposer, N8AO, SMAA } from '@react-three/postprocessing'
 import { getBackgroundMap } from './textures'
+import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { useStore } from '../store'
 import { HeartModel } from './HeartModel'
@@ -45,13 +46,16 @@ function Controls() {
   )
 }
 
-/** Pozadí jako vzdálená plocha s přechodem – funguje i s postprocessingem. */
+/** Pozadí jako kopule kolem celé scény – při otáčení kamery nikdy není vidět hrana. */
 function Background() {
   return (
-    <mesh position={[0, 0.3, -30]} scale={[120, 80, 1]} renderOrder={-10}>
-      <planeGeometry />
-      <meshBasicMaterial map={getBackgroundMap()} depthWrite={false} toneMapped={false} />
-    </mesh>
+    <>
+      <color attach="background" args={['#0f1626']} />
+      <mesh renderOrder={-10}>
+        <sphereGeometry args={[60, 48, 24]} />
+        <meshBasicMaterial map={getBackgroundMap()} side={THREE.BackSide} depthWrite={false} toneMapped={false} fog={false} />
+      </mesh>
+    </>
   )
 }
 

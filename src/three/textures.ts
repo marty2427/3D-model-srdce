@@ -114,9 +114,11 @@ export function getBackgroundMap() {
   canvas.width = 512
   canvas.height = 512
   const ctx = canvas.getContext('2d')!
-  const g = ctx.createRadialGradient(256, 210, 20, 256, 256, 360)
-  g.addColorStop(0, '#1b2740')
-  g.addColorStop(0.55, '#0f1626')
+  // svislý přechod: nahoře světlejší modrá, uprostřed střední, dole tmavá (mapuje se na kopuli podle výšky)
+  const g = ctx.createLinearGradient(0, 0, 0, 512)
+  g.addColorStop(0, '#1a2540')
+  g.addColorStop(0.45, '#141d33')
+  g.addColorStop(0.7, '#0f1626')
   g.addColorStop(1, '#0a0e16')
   ctx.fillStyle = g
   ctx.fillRect(0, 0, 512, 512)

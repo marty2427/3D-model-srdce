@@ -44,6 +44,9 @@ export interface AppState {
 
   playing: boolean
   setPlaying: (p: boolean) => void
+  /** globální pauza tepu (tlačítko vlevo dole) */
+  heartPaused: boolean
+  toggleHeartPaused: () => void
   speed: number
   setSpeed: (s: number) => void
   /** Krokování srdečního cyklu: index fáze nebo null (volný běh) */
@@ -115,6 +118,8 @@ export const useStore = create<AppState>((set) => ({
 
   playing: true,
   setPlaying: (playing) => set({ playing }),
+  heartPaused: false,
+  toggleHeartPaused: () => set((s) => ({ heartPaused: !s.heartPaused })),
   speed: 1,
   setSpeed: (speed) => set({ speed }),
   cycleStep: null,
